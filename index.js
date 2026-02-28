@@ -23,12 +23,6 @@ const verifyToken = require ("./verifyToken");
 
 
 
-
-
-
-
-
-
 // Database Connection
 
 mongoose.connect("mongodb://localhost:27017/NutrifyApp")
@@ -114,7 +108,7 @@ app.post("/login", async (req, res) => {
                         if(!err)
                         {
 
-                            res.send({message: "Login Successfull", token:token,})
+                            res.send({message: "Login Successfull", token:token, userid:user._id,name:user.name})
                         }
                     })
                     
@@ -127,13 +121,13 @@ app.post("/login", async (req, res) => {
         }
         else
         {
-            res.send({message: "Incorrect Email"})
+            res.status(404).send({message: "Incorrect Email"})
         }
     }
     catch(err)
     {
         console.log(err)
-        res.send({message: "Error Login In, try again!!!!"})
+        res.status(500).send({message: "Error Login In, try again!!!!"})
     }
     
 
@@ -156,7 +150,7 @@ app.get("/foods",verifyToken, async (req, res) => {
     catch(err)
     {
         console.log(err);
-        res.send({message: "Error fetching foods"})
+        res.status(500).send({message: "Error fetching foods"})
     }
     
 
@@ -177,14 +171,14 @@ app.get("/foods/:name", verifyToken, async (req, res) => {
         }
         else
         {
-            res.send({message: "Foods name not found or does not match????"})
+            res.status(404).send({message: "Foods name not found or does not match????"})
         }
 
     }
     catch(err)
     {
         console.log(err);
-        res.send({message: "Some problem fetching foods data"})
+        res.status(500).send({message: "Some problem fetching foods data"})
     }
 })
 
@@ -200,14 +194,14 @@ app.post("/track", verifyToken, async (req, res) => {
     {
 
         let userData = await trackingModel.create(trackData);
-        // console.log(userData)
-        res.send({message: "User added"});
+        
+        res.status(201).send({message: "Food added"});
     }
 
     catch(err)
     {
         console.log(err);
-        res.send({message: "Some problem fetching user data"})
+        res.status(500).send({message: "Some problem fetching user data"})
     }
 })
 
@@ -215,20 +209,48 @@ app.post("/track", verifyToken, async (req, res) => {
 
 // endpoint to show tracked foods for User
 
+const getSupportedDateFormats = (value) => {
+    if (!value) {
+        return [];
+    }
+
+    const normalizedValue = decodeURIComponent(value).trim();
+    const formats = new Set([normalizedValue]);
+    const parsedDate = new Date(normalizedValue);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+        const day = parsedDate.getDate();
+        const month = parsedDate.getMonth() + 1;
+        const year = parsedDate.getFullYear();
+
+        formats.add(`${day}/${month}/${year}`);
+        formats.add(`${month}/${day}/${year}`);
+        formats.add(parsedDate.toISOString().split('T')[0]);
+    }
+
+    return Array.from(formats);
+}
+
+
+
+
 app.get("/track/:userid/:date", verifyToken, async (req, res) => {
 
     let userid = req.params.userid;
-    let date = new Date(req.params.date)
+   
+    let possibleDates = getSupportedDateFormats(req.params.date);
 
-    let strDate = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
 
-    console.log (strDate, date)
+    if (possibleDates.length === 0)
+    {
+        return res.status(400).send({message: "Invalid date format"});
+    }
 
 
     try
     {
 
-        let foods = await trackingModel.find({userId:userid, eatenDate:strDate}).populate('userId').populate('foodId');
+        let foods = await trackingModel.find({userId:userid, eatenDate: {$in: possibleDates}}).populate('userId').populate('foodId');
        
         res.send(foods)
     }
@@ -236,16 +258,10 @@ app.get("/track/:userid/:date", verifyToken, async (req, res) => {
      catch(err)
     {
         console.log(err);
-        res.send({message: "Some problem fetching foods for User"})
+        res.status(500).send({message: "Some problem fetching foods for User"})
     }
 
 })
-
-
-
-
-
-
 
 
 

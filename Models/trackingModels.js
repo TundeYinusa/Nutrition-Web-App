@@ -15,12 +15,21 @@ const trackingSchema = mongoose.Schema({
         ref: 'foods',
         required: true
     },
+    details:{
+       
+        calories: Number,
+        protein: Number,
+        carbohydrates: Number,
+        fat: Number,
+        fiber: Number,
+       
+    },
     eatenDate: {
         type: String,
         default: new Date().toLocaleDateString()
 
     },
-    Quantity:{
+    quantity:{
         type: Number,
         required: true
     }
